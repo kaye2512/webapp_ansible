@@ -1,0 +1,8 @@
+---
+- name: Install Docker and Docker Compose on all servers
+  hosts: managers:workers
+  become: true
+  gather_facts: false
+
+  roles:
+    - docker

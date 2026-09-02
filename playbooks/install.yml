@@ -1,0 +1,9 @@
+---
+- name: Configuration des serveurs avec toutes les dépendances nécessaire
+  hosts: manager1
+  become: true
+  gather_facts: false
+
+  roles:
+    - common
+   

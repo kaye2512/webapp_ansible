@@ -1,0 +1,78 @@
+---
+- name: Vérifier si Docker est installé
+  ansible.builtin.command: which docker
+  register: docker_bin
+  failed_when: false
+  changed_when: false
+
+- name: Quitter le Swarm
+  ansible.builtin.command: docker swarm leave --force
+  register: swarm_leave
+  failed_when: false
+  changed_when: "'Node left the swarm' in swarm_leave.stdout"
+  when: docker_bin.rc == 0
+
+- name: Lister les conteneurs
+  ansible.builtin.command: docker ps -aq
+  register: containers
+  failed_when: false
+  changed_when: false
+  when: docker_bin.rc == 0
+
+- name: Arrêter tous les conteneurs
+  ansible.builtin.shell: docker stop $(docker ps -aq)
+  failed_when: false
+  changed_when: true
+  when:
+    - docker_bin.rc == 0
+    - containers.stdout | default('') | length > 0
+
+- name: Prune complet (conteneurs, images, volumes, réseaux)
+  ansible.builtin.command: docker system prune -a --volumes --force
+  failed_when: false
+  changed_when: true
+  when: docker_bin.rc == 0
+
+- name: Supprimer les volumes restants
+  ansible.builtin.shell: docker volume rm $(docker volume ls -q)
+  failed_when: false
+  changed_when: true
+  when: docker_bin.rc == 0
+
+- name: Arrêter et désactiver les services Docker
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    state: stopped
+    enabled: false
+  failed_when: false
+  loop:
+    - docker.service
+    - docker.socket
+    - containerd.service
+
+- name: Purger les paquets Docker
+  ansible.builtin.apt:
+    name:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+      - docker-buildx-plugin
+      - docker-compose-plugin
+    state: absent
+    purge: true
+    autoremove: true
+
+- name: Supprimer les répertoires Docker
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /var/lib/docker
+    - /var/lib/containerd
+    - /etc/docker
+    - /var/run/docker.sock
+
+- name: Supprimer le groupe docker
+  ansible.builtin.group:
+    name: docker
+    state: absent

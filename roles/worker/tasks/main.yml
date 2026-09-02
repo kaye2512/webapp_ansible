@@ -1,0 +1,14 @@
+---
+- name: Récupérer le token worker depuis le manager
+  ansible.builtin.command: docker swarm join-token -q worker
+  register: worker_join_token
+  changed_when: false
+  delegate_to: "{{ groups['managers'][0] }}"
+  
+- name: Traitement des workers pour rejoindre le swarm manager
+  community.docker.docker_swarm:
+   state: join
+   join_token: "{{ worker_join_token.stdout }}"
+   remote_addrs:
+     - "{{ hostvars[groups['managers'][0]].ansible_host }}"
+   advertise_addr: "{{ ansible_host }}"

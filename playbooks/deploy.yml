@@ -1,0 +1,6 @@
+---
+- name: Déploiement de la stack sur le swarm
+  hosts: managers
+  become: true
+  roles:
+    - deploy
