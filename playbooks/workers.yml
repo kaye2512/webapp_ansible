@@ -1,0 +1,8 @@
+---
+- name: Jointure du worker au swarm manager
+  hosts: workers
+  become: true
+  gather_facts: false
+
+  roles:
+    - worker

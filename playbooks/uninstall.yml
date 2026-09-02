@@ -1,0 +1,6 @@
+---
+- name: Nettoyage complet de Docker et Swarm
+  hosts: "managers:workers"
+  become: true
+  roles:
+    - uninstall

@@ -1,0 +1,17 @@
+---
+- name: Install common packages
+  ansible.builtin.apt:
+    name: 
+      - git
+      - curl
+      - vim
+      - htop
+      - unzip
+      - python3-pip
+      - python3-venv
+      - ca-certificates
+      - apt-transport-https
+      - software-properties-common
+    state: present
+    update_cache: true
+    

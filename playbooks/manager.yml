@@ -1,0 +1,6 @@
+---
+- name: Initialisation du docker swarm manager
+  hosts: managers
+  become: true
+  roles:
+    - swarm

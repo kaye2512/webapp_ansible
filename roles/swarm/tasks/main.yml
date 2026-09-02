@@ -1,0 +1,14 @@
+---
+- name: Installer python3-docker et awscli
+  ansible.builtin.apt:
+    name:
+      - awscli 
+      - python3-docker
+    state: present
+    update_cache: true
+    
+- name: Initialisation du docker swarm manager
+  community.docker.docker_swarm:
+    state: present
+    advertise_addr: "{{ ansible_host }}"
+  register: swarm_info

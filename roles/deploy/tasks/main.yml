@@ -1,0 +1,69 @@
+---
+- name: Installer python3-docker
+  ansible.builtin.apt:
+    name:
+      - python3-docker
+    state: present
+    update_cache: true
+    
+- name: Login à ECR
+  ansible.builtin.shell: >
+    aws ecr get-login-password --region {{ vault_aws_region }}
+    | docker login --username AWS --password-stdin {{ vault_ecr_registry }}
+  environment:
+    AWS_ACCESS_KEY_ID: "{{ vault_aws_access_key_id }}"
+    AWS_SECRET_ACCESS_KEY: "{{ vault_aws_secret_access_key }}"
+  register: ecr_login
+  changed_when: "'Login Succeeded' in ecr_login.stdout"
+  no_log: true
+
+- name: Créer les docker secrets applicatifs (depuis le vault)
+  community.docker.docker_secret:
+    name: "{{ item.name }}"
+    data: "{{ item.value }}"
+    state: present
+  loop:
+    - { name: mongo_uri_v3,      value: "{{ vault_mongo_uri }}" }
+    - { name: jwt_secret,     value: "{{ vault_jwt_secret }}" }
+    - { name: tmdb_api_key_v2,   value: "{{ vault_tmdb_api_key }}" }
+    - { name: mailtrap_token, value: "{{ vault_mailtrap_token }}" }
+  no_log: true
+
+#- name: Créer les secrets TLS
+#  community.docker.docker_secret:
+#    name: "{{ item.name }}"
+#    data: "{{ lookup('file', item.file) }}"
+#    state: present
+#  loop:
+#    - { name: tls_cert, file: "roles/deploy/files/certs/cert.pem" }
+#    - { name: tls_key,  file: "roles/deploy/files/certs/key.pem" }
+
+- name: Créer le config nginx
+  community.docker.docker_config:
+    name: nginx_conf_v2
+    data: "{{ lookup('file', 'nginx.conf') }}"
+    state: present
+
+- name: Créer le dossier de déploiement sur le manager
+  ansible.builtin.file:
+    path: /home/{{ ansible_user }}/netflix
+    state: directory
+    mode: "0755"
+
+- name: Copier le compose sur le manager
+  ansible.builtin.copy:
+    src: docker-compose.prod.yml
+    dest: /home/{{ ansible_user }}/netflix/docker-compose.prod.yml
+    mode: "0644"
+
+- name: Déployer la stack sur le swarm
+  ansible.builtin.command: >
+    docker stack deploy
+    --with-registry-auth
+    -c /home/{{ ansible_user }}/netflix/docker-compose.prod.yml
+    netflix
+  environment:
+    ECR_REGISTRY: "{{ vault_ecr_registry }}"
+    IMAGE_TAG: "{{ image_tag | default('v2') }}"
+    CLIENT_URL: "{{ client_url | default('http://192.168.177.145') }}"
+  become: true
