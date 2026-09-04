@@ -1,0 +1,99 @@
+---
+- name: Login à ECR
+  ansible.builtin.shell: >
+    aws ecr get-login-password --region {{ vault_aws_region }}
+    | docker login --username AWS --password-stdin {{ vault_ecr_registry }}
+  environment:
+    AWS_ACCESS_KEY_ID: "{{ vault_aws_access_key_id }}"
+    AWS_SECRET_ACCESS_KEY: "{{ vault_aws_secret_access_key }}"
+  register: ecr_login
+  changed_when: "'Login Succeeded' in ecr_login.stdout"
+  no_log: true
+
+- name: Créer les docker secrets applicatifs (depuis le vault)
+  community.docker.docker_secret:
+    name: "{{ item.name }}"
+    data: "{{ item.value }}"
+    state: present
+  loop:
+    - { name: POSTGRES_USER,        value: "{{ vault_postgres_user }}" }
+    - { name: POSTGRES_PASSWORD,    value: "{{ vault_postgres_password }}" }
+    - { name: POSTGRES_DB,          value: "{{ vault_postgres_db }}" }
+    - { name: DATABASE_URL_v1,      value: "{{ vault_database_url }}" }
+    - { name: BETTER_AUTH_SECRET,   value: "{{ vault_better_auth_secret }}" }
+    - { name: BETTER_AUTH_URL_v1,      value: "{{ vault_better_auth_url }}" }
+    - { name: RESEND_API_KEY,       value: "{{ vault_resend_api_key }}" }
+    - { name: EMAIL_FROM,           value: "{{ vault_email_from }}" }
+    - { name: DATA_ENCRYPTION_KEY,  value: "{{ vault_data_encryption_key }}" }
+  no_log: true
+
+- name: Créer le config nginx
+  community.docker.docker_config:
+    name: nginx_conf
+    data: "{{ lookup('file', 'nginx.conf') }}"
+    state: present
+
+- name: Créer le dossier de déploiement sur le manager
+  ansible.builtin.file:
+    path: /home/{{ ansible_user }}/rpn
+    state: directory
+    mode: "0755"
+
+- name: Copier le compose sur le manager
+  ansible.builtin.copy:
+    src: rpn/docker-compose.prod.yml
+    dest: /home/{{ ansible_user }}/rpn/docker-compose.prod.yml
+    mode: "0644"
+
+- name: Déployer la stack sur le swarm
+  ansible.builtin.command: >
+    docker stack deploy
+    --detach=true
+    --with-registry-auth
+    -c /home/{{ ansible_user }}/rpn/docker-compose.prod.yml rpn
+  environment:
+    ECR_REGISTRY: "{{ vault_ecr_registry }}"
+    IMAGE_TAG: "{{ image_tag | default('latest') }}"
+  become: true
+  changed_when: true
+
+- name: Attendre que la base de données accepte les connexions
+  ansible.builtin.shell: >
+    docker exec "$(docker ps -q -f name=rpn_db -n 1)" pg_isready -q
+  register: db_ready
+  until: db_ready.rc == 0
+  retries: 30
+  delay: 5
+  changed_when: false
+  become: true
+
+- name: Appliquer les migrations Prisma (one-shot, hors stack)
+  ansible.builtin.command:
+    argv:
+      - docker
+      - run
+      - --rm
+      - --pull
+      - always
+      - --network
+      - rpn_rpn-network
+      - -e
+      - "DATABASE_URL={{ vault_database_url }}"
+      - "{{ vault_ecr_registry }}/rpn_website:migrator-{{ image_tag | default('latest') }}"
+  environment:
+    AWS_ACCESS_KEY_ID: "{{ vault_aws_access_key_id }}"
+    AWS_SECRET_ACCESS_KEY: "{{ vault_aws_secret_access_key }}"
+  become: true
+  register: migration
+  changed_when: true
+  no_log: true
+
+
+- name: Vérifier le déploiement de la stack
+  ansible.builtin.command: docker stack ps rpn
+  register: stack_ps
+  changed_when: false
+
+- name: Afficher l'état de la stack
+  ansible.builtin.debug:
+    var: stack_ps.stdout_lines

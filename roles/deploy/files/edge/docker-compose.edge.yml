@@ -1,0 +1,28 @@
+services:
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"        
+    configs:
+      - source: edge_nginx_conf_v4
+        target: /etc/nginx/nginx.conf
+    networks:
+      - edge         
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints: [node.role == manager]
+      restart_policy:
+        condition: on-failure
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+
+networks:
+  edge:
+    external: true   
+
+configs:
+  edge_nginx_conf_v4:
+    external: true      

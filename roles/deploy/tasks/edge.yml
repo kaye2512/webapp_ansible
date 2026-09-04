@@ -1,0 +1,27 @@
+---
+- name: Créer le dossier edge sur le manager
+  ansible.builtin.file:
+    path: /home/{{ ansible_user }}/edge
+    state: directory
+    mode: "0755"
+
+- name: Créer la config nginx de l'edge (routage par domaine)
+  community.docker.docker_config:
+    name: edge_nginx_conf_v4
+    data: "{{ lookup('file', 'nginx.conf') }}"
+    state: present
+
+- name: Copier le compose edge sur le manager
+  ansible.builtin.copy:
+    src: edge/docker-compose.edge.yml
+    dest: /home/{{ ansible_user }}/edge/docker-compose.edge.yml
+    mode: "0644"
+
+- name: Déployer la stack edge
+  ansible.builtin.command: >
+    docker stack deploy
+    --detach=true
+    --with-registry-auth
+    -c /home/{{ ansible_user }}/edge/docker-compose.edge.yml edge
+  become: true
+  changed_when: true
