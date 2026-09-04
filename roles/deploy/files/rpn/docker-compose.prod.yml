@@ -1,0 +1,102 @@
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER_FILE: /run/secrets/POSTGRES_USER
+      POSTGRES_PASSWORD_FILE: /run/secrets/POSTGRES_PASSWORD
+      POSTGRES_DB_FILE: /run/secrets/POSTGRES_DB
+    secrets:
+      - POSTGRES_USER
+      - POSTGRES_PASSWORD
+      - POSTGRES_DB
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks: [rpn-network]  
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$(cat /run/secrets/POSTGRES_USER)\" -d \"$$(cat /run/secrets/POSTGRES_DB)\""]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints: [node.role == manager]
+      restart_policy:
+        condition: on-failure
+      update_config:
+        parallelism: 1
+        delay: 10s
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+
+  app:
+    image: ${ECR_REGISTRY}/rpn_website:${IMAGE_TAG:-latest}
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        export DATABASE_URL="$$(cat /run/secrets/DATABASE_URL)"
+        export BETTER_AUTH_SECRET="$$(cat /run/secrets/BETTER_AUTH_SECRET)"
+        export BETTER_AUTH_URL="$$(cat /run/secrets/BETTER_AUTH_URL)"
+        export RESEND_API_KEY="$$(cat /run/secrets/RESEND_API_KEY)"
+        export EMAIL_FROM="$$(cat /run/secrets/EMAIL_FROM)"
+        export DATA_ENCRYPTION_KEY="$$(cat /run/secrets/DATA_ENCRYPTION_KEY)"
+        export HOSTNAME=0.0.0.0
+        export PORT=3000
+        exec node server.js
+    secrets:
+      - source: DATABASE_URL_v1
+        target: DATABASE_URL
+      - source: BETTER_AUTH_SECRET
+        target: BETTER_AUTH_SECRET
+      - source: BETTER_AUTH_URL_v1
+        target: BETTER_AUTH_URL
+      - source: RESEND_API_KEY
+        target: RESEND_API_KEY
+      - source: EMAIL_FROM
+        target: EMAIL_FROM
+      - source: DATA_ENCRYPTION_KEY
+        target: DATA_ENCRYPTION_KEY
+    networks:
+      - rpn-network    # pour joindre la db
+      - edge           # pour être joignable par le reverse-proxy edge (sous le nom rpn_app)
+    # PLUS de "ports" ici : l'app n'est PAS exposée publiquement, c'est l'edge
+    # qui l'atteint via le réseau "edge" sur le port 8082.
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints: [node.role == manager]
+      restart_policy:
+        condition: on-failure
+      update_config:
+        parallelism: 1
+        delay: 10s
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+
+  # Le service "nginx" a été RETIRE de cette stack : le routage HTTP est
+  # désormais assuré par la stack "edge" (un seul port 80 pour tout le cluster).
+
+volumes:
+  pgdata:
+
+networks:
+  rpn-network:
+    driver: overlay
+    attachable: true    # requis pour le "docker run" one-shot de la migration
+  edge:
+    external: true      # réseau partagé, créé en amont
+
+secrets:
+  DATABASE_URL_v1: { external: true }
+  POSTGRES_USER: { external: true }
+  POSTGRES_PASSWORD: { external: true }
+  POSTGRES_DB: { external: true }
+  BETTER_AUTH_SECRET: { external: true }
+  BETTER_AUTH_URL_v1: { external: true }
+  RESEND_API_KEY: { external: true }
+  EMAIL_FROM: { external: true }
+  DATA_ENCRYPTION_KEY: { external: true }
