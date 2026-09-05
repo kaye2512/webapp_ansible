@@ -11,6 +11,13 @@ secrets.yml
 local.yml
 host_vars/local_*
 group_vars/local_*
+# Variables et secrets Ansible
+**/vars.yml
+**/vars.yaml
+**/vault.yml
+**/vault.yaml
+**/*vault*
+**/*secret*
 
 # Rôles téléchargés via Ansible Galaxy (si vous ne souhaitez pas les versionner)
 
