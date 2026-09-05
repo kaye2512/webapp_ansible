@@ -1,0 +1,39 @@
+---
+- name: Créer le répertoire de déploiement Traefik
+  ansible.builtin.file:
+    path: /etc/traefik
+    state: directory
+    mode: '0755'
+    
+- name: Créer le fichier acme.json pour les certificats Let's Encrypt
+  ansible.builtin.file:
+    path: /etc/traefik/acme.json
+    state: touch
+    mode: '0600'
+
+- name: Créer le répertoire de configuration Traefik
+  ansible.builtin.file:
+    path: /etc/traefik/config/
+    state: directory
+    mode: '0755'
+
+- name: Créer le répertoire de configuration Traefik
+  ansible.builtin.file:
+    path: /etc/traefik/config/dynamic
+    state: directory
+    mode: '0755'
+
+- name: Copier le fichier de configuration statique Traefik
+  ansible.builtin.copy:
+    src: traefik/config/traefik.yaml
+    dest: /etc/traefik/config/traefik.yaml
+
+- name: Copier le docker-compose.yml pour traefik
+  ansible.builtin.copy:
+    src: traefik/docker-compose.yml
+    dest: /etc/traefik/docker-compose.yml
+
+- name: Run l'installation de Traefik
+  community.docker.docker_compose_v2:
+    project_src: /etc/traefik
+  register: output

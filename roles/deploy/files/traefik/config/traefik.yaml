@@ -1,0 +1,29 @@
+# Configuration statique de Traefik
+
+# Points d'entrée
+entryPoints:
+  web:
+    address: ":80"
+  websecure:
+    address: ":443"
+
+# API et Dashboard
+api:
+  dashboard: true
+  insecure: true  # Pour les tests uniquement
+
+# Provider Docker
+providers:
+  docker:
+    endpoint: "unix:///var/run/docker.sock"
+    exposedByDefault: false  # Expose uniquement les conteneurs avec label traefik.enable=true
+    watch: true
+  file:
+    directory: /etc/traefik/dynamic
+    watch: true
+
+# Logging
+log:
+  level: INFO
+
+accessLog: {}

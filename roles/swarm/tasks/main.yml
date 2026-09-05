@@ -12,3 +12,11 @@
     state: present
     advertise_addr: "{{ ansible_host }}"
   register: swarm_info
+
+- name: Supprimer le stack si il existe déjà
+  community.docker.docker_stack:
+    name: rpn
+    state: absent
+  ignore_errors: true
+  tags: 
+    - rpn

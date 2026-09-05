@@ -1,2 +1,37 @@
+# Fichiers de rejeu Ansible (générés en cas d'échec)
+*.retry
+
+# Fichiers de données ou secrets locaux (inventaires dynamiques ou variables non versionnées)
+*.secret
+*.vault
+*.vars
 vault.*
 vars.*
+secrets.yml
+local.yml
+host_vars/local_*
+group_vars/local_*
+
+# Rôles téléchargés via Ansible Galaxy (si vous ne souhaitez pas les versionner)
+
+# Collections téléchargées
+collections/
+
+# Environnement virtuel Python (si utilisé pour installer Ansible)
+venv/
+env/
+.env
+
+# Cache Python et fichiers compilés
+__pycache__/
+*.py[cod]
+
+# IDE et éditeurs (VS Code, JetBrains)
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Système d'exploitation
+.DS_Store
+Thumbs.db

@@ -28,3 +28,8 @@
   ansible.builtin.import_tasks: rpn.yml
   tags:  
     - rpn
+
+- name: deploy traefik stack
+  ansible.builtin.import_tasks: traefik.yml
+  tags:  
+    - traefik
