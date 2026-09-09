@@ -50,7 +50,7 @@ services:
         target: DATABASE_URL
       - source: BETTER_AUTH_SECRET
         target: BETTER_AUTH_SECRET
-      - source: BETTER_AUTH_URL_v1
+      - source: BETTER_AUTH_URL_v2
         target: BETTER_AUTH_URL
       - source: RESEND_API_KEY
         target: RESEND_API_KEY
@@ -59,10 +59,8 @@ services:
       - source: DATA_ENCRYPTION_KEY
         target: DATA_ENCRYPTION_KEY
     networks:
-      - rpn-network    # pour joindre la db
-      - edge           # pour être joignable par le reverse-proxy edge (sous le nom rpn_app)
-    # PLUS de "ports" ici : l'app n'est PAS exposée publiquement, c'est l'edge
-    # qui l'atteint via le réseau "edge" sur le port 8082.
+      - traefik-public  # pour être joignable par le reverse-proxy traefik (sous le nom rpn.kayedev.dedyn.io)
+      - rpn-network  
     deploy:
       mode: replicated
       replicas: 1
@@ -73,30 +71,32 @@ services:
       update_config:
         parallelism: 1
         delay: 10s
+      labels:
+        traefik.enable: "true"
+        traefik.http.routers.rpn_app.rule: "Host(`rpn.kayedev.dedyn.io`)"
+        traefik.http.routers.rpn_app.entrypoints: "websecure"
+        traefik.http.routers.rpn_app.tls.certresolver: "letsencrypt"
+        traefik.http.services.rpn_app.loadbalancer.server.port: "3000"
     logging:
       driver: json-file
       options: { max-size: "10m", max-file: "3" }
-
-  # Le service "nginx" a été RETIRE de cette stack : le routage HTTP est
-  # désormais assuré par la stack "edge" (un seul port 80 pour tout le cluster).
 
 volumes:
   pgdata:
 
 networks:
+  traefik-public:
+    external: true
   rpn-network:
     driver: overlay
     attachable: true    # requis pour le "docker run" one-shot de la migration
-  edge:
-    external: true      # réseau partagé, créé en amont
-
 secrets:
   DATABASE_URL_v1: { external: true }
   POSTGRES_USER: { external: true }
   POSTGRES_PASSWORD: { external: true }
   POSTGRES_DB: { external: true }
   BETTER_AUTH_SECRET: { external: true }
-  BETTER_AUTH_URL_v1: { external: true }
+  BETTER_AUTH_URL_v2: { external: true }
   RESEND_API_KEY: { external: true }
   EMAIL_FROM: { external: true }
   DATA_ENCRYPTION_KEY: { external: true }

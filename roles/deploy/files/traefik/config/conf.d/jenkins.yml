@@ -1,0 +1,22 @@
+http:
+  routers:
+    jenkins:
+      rule: "Host(`jenkins.kayedev.dedyn.io`)"
+      entryPoints:
+        - websecure
+      service: jenkins
+      middlewares:
+        - jenkins-headers
+      tls:
+        certResolver: letsencrypt
+  services:
+    jenkins:
+      loadBalancer:
+        passHostHeader: true
+        servers:
+          - url: "http://192.168.177.146:8080"
+  middlewares:
+    jenkins-headers:
+      headers:
+        customRequestHeaders:
+          X-Forwarded-Proto: "https"

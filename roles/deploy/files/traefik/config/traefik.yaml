@@ -1,29 +1,79 @@
-# Configuration statique de Traefik
-
-# Points d'entrée
+# =============================================================================
+# ENTRYPOINTS
+# =============================================================================
 entryPoints:
   web:
     address: ":80"
+    http:
+      redirections:
+        entryPoint:
+          to: websecure
+          scheme: https
   websecure:
     address: ":443"
+    http:
+      tls:
+        certResolver: letsencrypt
+  metrics:
+    address: ":8082"
 
-# API et Dashboard
+# =============================================================================
+# PROVIDERS
+# =============================================================================
+providers:
+  swarm:                                   
+    endpoint: "unix:///var/run/docker.sock"
+    exposedByDefault: false
+    network: traefik-public
+  file:
+    directory: /etc/traefik/conf.d
+    watch: true
+
+# =============================================================================
+# API / DASHBOARD
+# =============================================================================
 api:
   dashboard: true
-  insecure: true  # Pour les tests uniquement
 
-# Provider Docker
-providers:
-  docker:
-    endpoint: "unix:///var/run/docker.sock"
-    exposedByDefault: false  # Expose uniquement les conteneurs avec label traefik.enable=true
-    watch: true
-  file:
-    directory: /etc/traefik/dynamic
-    watch: true
+# =============================================================================
+# ACME (Let's Encrypt)
+# =============================================================================
+certificatesResolvers:
+  letsencrypt:
+    acme:
+      email: hkayengassi@gmail.com
+      storage: /etc/traefik/acme.json
+      # Décommente pour tester sans cramer le rate limit LE : 
+      # caServer: https://acme-staging-v02.api.letsencrypt.org/directory
+      dnsChallenge:
+        provider: desec
+        resolvers:
+          - "ns1.desec.io:53"
+          - "ns2.desec.org:53"
 
-# Logging
+# =============================================================================
+# LOGS (sur stdout le temps de débugger -> docker logs traefik)
+# =============================================================================
 log:
-  level: INFO
+  level: DEBUG        # repasse en INFO une fois que tout marche
+  format: json
 
-accessLog: {}
+accessLog:
+  format: json
+  filters:
+    statusCodes:
+      - "400-599"
+  fields:
+    headers:
+      names:
+        User-Agent: keep
+        Authorization: drop
+
+# =============================================================================
+# METRIQUES (Prometheus)
+# =============================================================================
+metrics:
+  prometheus:
+    entryPoint: metrics
+    addServicesLabels: true
+    addRoutersLabels: true

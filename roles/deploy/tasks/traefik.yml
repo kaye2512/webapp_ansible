@@ -11,6 +11,21 @@
     state: touch
     mode: '0600'
 
+- name: Créer le réseau overlay partagé traefik-public
+  community.docker.docker_network:
+    name: traefik-public
+    driver: overlay
+    attachable: true
+    scope: swarm
+  run_once: true          # ressource de cluster : une seule fois
+    
+- name: Créer le secret desec_token
+  community.docker.docker_secret:
+    name: desec_token
+    data: "{{ vault_desec_token }}"
+    state: present
+  no_log: true
+
 - name: Créer le répertoire de configuration Traefik
   ansible.builtin.file:
     path: /etc/traefik/config/
@@ -19,7 +34,7 @@
 
 - name: Créer le répertoire de configuration Traefik
   ansible.builtin.file:
-    path: /etc/traefik/config/dynamic
+    path: /etc/traefik/config/conf.d
     state: directory
     mode: '0755'
 
@@ -28,12 +43,25 @@
     src: traefik/config/traefik.yaml
     dest: /etc/traefik/config/traefik.yaml
 
+- name: Copier le fichier de configuration dynamique Traefik pour le dashboard
+  ansible.builtin.copy:
+    src: traefik/config/conf.d/dashboard.yml
+    dest: /etc/traefik/config/conf.d/dashboard.yml
+
+- name: Copier le fichier de configuration dynamique Traefik pour Jenkins
+  ansible.builtin.copy:
+    src: traefik/config/conf.d/jenkins.yml
+    dest: /etc/traefik/config/conf.d/jenkins.yml
+
 - name: Copier le docker-compose.yml pour traefik
   ansible.builtin.copy:
     src: traefik/docker-compose.yml
     dest: /etc/traefik/docker-compose.yml
 
-- name: Run l'installation de Traefik
-  community.docker.docker_compose_v2:
-    project_src: /etc/traefik
-  register: output
+- name: Déployer la stack Traefik sur le swarm
+  ansible.builtin.command: >
+    docker stack deploy
+    --detach=true
+    -c /etc/traefik/docker-compose.yml traefik
+  become: true
+  changed_when: true

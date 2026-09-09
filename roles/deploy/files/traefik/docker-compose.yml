@@ -1,27 +1,37 @@
 services:
   traefik:
     image: traefik:v3.7.6@sha256:21a3d83696379bac6434bb32e1dde0aff0e84ef2abd053ed3db87d3f45e749b2
-    container_name: traefik
-    restart: unless-stopped
-    security_opt:
-      - no-new-privileges:true
+    command: []
     ports:
       - "80:80"
       - "443:443"
-      - "8080:8080"
     volumes:
-      # Socket Docker (lecture seule)
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      # Configuration statique
-      - ./config/traefik.yaml:/etc/traefik/traefik.yaml:ro
-      # Configuration dynamique
-      - ./config/dynamic:/etc/traefik/dynamic:ro
-      # Certificats ACME
-      - ./acme.json:/acme.json
+      - /etc/traefik/config/traefik.yaml:/etc/traefik/traefik.yaml:ro
+      - /etc/traefik/config/conf.d:/etc/traefik/conf.d:ro
+      - /etc/traefik/acme.json:/etc/traefik/acme.json
+    environment:
+      - DESEC_TOKEN_FILE=/run/secrets/desec_token   # lego supporte le suffixe _FILE
+      - DESEC_PROPAGATION_TIMEOUT=1200
+      - DESEC_POLLING_INTERVAL=30
+    secrets:
+      - desec_token
     networks:
       - traefik-public
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+          - node.labels.traefik == true
+      restart_policy:
+        condition: on-failure
 
 networks:
   traefik-public:
-    name: traefik-public
-    driver: bridge
+    external: true
+
+secrets:
+  desec_token:
+    external: true
