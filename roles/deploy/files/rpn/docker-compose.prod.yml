@@ -42,6 +42,7 @@ services:
         export RESEND_API_KEY="$$(cat /run/secrets/RESEND_API_KEY)"
         export EMAIL_FROM="$$(cat /run/secrets/EMAIL_FROM)"
         export DATA_ENCRYPTION_KEY="$$(cat /run/secrets/DATA_ENCRYPTION_KEY)"
+        export TRACKING_CODE_PEPPER="$$(cat /run/secrets/TRACKING_CODE_PEPPER)"
         export HOSTNAME=0.0.0.0
         export PORT=3000
         exec node server.js
@@ -58,6 +59,8 @@ services:
         target: EMAIL_FROM
       - source: DATA_ENCRYPTION_KEY
         target: DATA_ENCRYPTION_KEY
+      - source: TRACKING_CODE_PEPPER
+        target: TRACKING_CODE_PEPPER
     networks:
       - traefik-public  # pour être joignable par le reverse-proxy traefik (sous le nom rpn.kayedev.dedyn.io)
       - rpn-network  
@@ -100,3 +103,4 @@ secrets:
   RESEND_API_KEY: { external: true }
   EMAIL_FROM: { external: true }
   DATA_ENCRYPTION_KEY: { external: true }
+  TRACKING_CODE_PEPPER: { external: true }

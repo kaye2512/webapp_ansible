@@ -34,6 +34,7 @@
     - { name: RESEND_API_KEY,       value: "{{ vault_resend_api_key }}" }
     - { name: EMAIL_FROM,           value: "{{ vault_email_from }}" }
     - { name: DATA_ENCRYPTION_KEY,  value: "{{ vault_data_encryption_key }}" }
+    - { name: TRACKING_CODE_PEPPER, value: "{{ vault_tracking_code_pepper }}" }
   no_log: true
 
 - name: Créer le dossier de déploiement sur le manager
@@ -90,6 +91,27 @@
   register: migration
   changed_when: true
   no_log: true
+
+- name: Bootstrap du compte administrateur (one-shot)
+  ansible.builtin.command:
+    argv:
+      - docker
+      - run
+      - --rm
+      - --pull
+      - always
+      - --network
+      - rpn_rpn-network
+      - -e
+      - "DATABASE_URL={{ vault_database_url }}"
+      - -e
+      - "ADMIN_EMAIL={{ vault_admin_email }}"
+      - -e
+      - "ADMIN_PASSWORD={{ vault_admin_password }}"
+      - "{{ vault_ecr_registry }}/rpn_website:seeder-{{ image_tag | default('latest') }}"
+  become: true
+  no_log: true
+  changed_when: true
 
 
 - name: Vérifier le déploiement de la stack
