@@ -2,21 +2,18 @@
 - name: Installer python3-docker et awscli
   ansible.builtin.apt:
     name:
-      - awscli 
       - python3-docker
     state: present
     update_cache: true
-    
-- name: Initialisation du docker swarm manager
+
+- name: Récupérer l'IP Tailscale du manager
+  ansible.builtin.command: tailscale ip -4
+  register: ts_ip
+  changed_when: false
+
+- name: Initialisation du docker swarm manager (sur l'IP Tailscale)
   community.docker.docker_swarm:
     state: present
-    advertise_addr: "{{ ansible_host }}"
+    advertise_addr: "{{ ts_ip.stdout_lines[0] }}"
+    data_path_addr: "{{ ts_ip.stdout_lines[0] }}"   # overlay/VXLAN aussi dans le tunnel
   register: swarm_info
-
-- name: Supprimer le stack si il existe déjà
-  community.docker.docker_stack:
-    name: rpn
-    state: absent
-  ignore_errors: true
-  tags: 
-    - rpn

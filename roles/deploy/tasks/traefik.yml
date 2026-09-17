@@ -11,6 +11,8 @@
     state: touch
     mode: '0600'
 
+# Créer le réseau overlay partagé traefik-public pour que les services puissent être joignables par le reverse-proxy traefik
+# Le fait de le créer dans le rôle traefik permet de s'assurer qu'il est créé avant le déploiement des services qui en ont besoin (rpn, jenkins, etc.)
 - name: Créer le réseau overlay partagé traefik-public
   community.docker.docker_network:
     name: traefik-public
@@ -32,7 +34,7 @@
     state: directory
     mode: '0755'
 
-- name: Créer le répertoire de configuration Traefik
+- name: Créer le répertoire de configuration dynamic de Traefik
   ansible.builtin.file:
     path: /etc/traefik/config/conf.d
     state: directory

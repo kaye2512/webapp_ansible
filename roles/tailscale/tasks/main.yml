@@ -1,0 +1,44 @@
+---
+# ============================================================
+#  Rôle tailscale — relie tous les nœuds sur un réseau privé
+#  chiffré. No-op complet si tailscale_enabled = false (donc
+#  invisible en environnement local).
+# ============================================================
+
+- name: Bloc Tailscale (activé uniquement si tailscale_enabled)
+  when: tailscale_enabled | default(false) | bool
+  block:
+
+    - name: Installer Tailscale (script officiel, idempotent)
+      ansible.builtin.shell: curl -fsSL https://tailscale.com/install.sh | sh
+      args:
+        creates: /usr/bin/tailscale
+
+    - name: Activer le service tailscaled
+      ansible.builtin.service:
+        name: tailscaled
+        state: started
+        enabled: true
+
+    - name: Connecter le nœud au tailnet
+      # --authkey : clé stockée dans vault. --hostname : nom lisible dans la console.
+      ansible.builtin.command: >-
+        tailscale up
+        --authkey {{ tailscale_authkey }}
+        --hostname {{ inventory_hostname | replace('_', '-') }}
+        --accept-routes
+      register: ts_up
+      changed_when: "'Success' in ts_up.stdout or ts_up.rc == 0"
+      no_log: true
+
+    - name: Récupérer l'IP Tailscale (IPv4) du nœud
+      ansible.builtin.command: tailscale ip -4
+      register: ts_ip
+      changed_when: false
+      retries: 5
+      delay: 3
+      until: ts_ip.stdout | length > 0
+
+    - name: Exposer l'IP Tailscale comme fait (utilisé par swarm/worker)
+      ansible.builtin.set_fact:
+        tailscale_ip: "{{ ts_ip.stdout_lines[0] | trim }}"

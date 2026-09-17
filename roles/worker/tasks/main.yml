@@ -1,14 +1,32 @@
 ---
+- name: Installer python3-docker (requis par le module docker_swarm)
+  ansible.builtin.apt:
+    name: python3-docker
+    state: present
+    update_cache: true
+
+- name: Récupérer l'IP Tailscale du worker
+  ansible.builtin.command: tailscale ip -4
+  register: ts_ip
+  changed_when: false
+
+- name: Récupérer l'IP Tailscale du manager
+  ansible.builtin.command: tailscale ip -4
+  register: mgr_ts_ip
+  changed_when: false
+  delegate_to: "{{ groups['managers'][0] }}"
+
 - name: Récupérer le token worker depuis le manager
   ansible.builtin.command: docker swarm join-token -q worker
   register: worker_join_token
   changed_when: false
   delegate_to: "{{ groups['managers'][0] }}"
-  
-- name: Traitement des workers pour rejoindre le swarm manager
+
+- name: Rejoindre le swarm manager (via le tunnel Tailscale)
   community.docker.docker_swarm:
-   state: join
-   join_token: "{{ worker_join_token.stdout }}"
-   remote_addrs:
-     - "{{ hostvars[groups['managers'][0]].ansible_host }}"
-   advertise_addr: "{{ ansible_host }}"
+    state: join
+    join_token: "{{ worker_join_token.stdout }}"
+    remote_addrs:
+      - "{{ mgr_ts_ip.stdout_lines[0] }}:2377"
+    advertise_addr: "{{ ts_ip.stdout_lines[0] }}"
+    data_path_addr: "{{ ts_ip.stdout_lines[0] }}"
