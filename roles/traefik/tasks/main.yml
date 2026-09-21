@@ -1,0 +1,67 @@
+---
+- name: Créer le répertoire de déploiement Traefik
+  ansible.builtin.file:
+    path: /opt/traefik
+    state: directory
+    mode: '0755'
+    
+- name: Créer le fichier acme.json pour les certificats Let's Encrypt
+  ansible.builtin.file:
+    path: /opt/traefik/acme.json
+    state: touch
+    mode: '0600'
+
+# Créer le réseau overlay partagé traefik-public pour que les services puissent être joignables par le reverse-proxy traefik
+# Le fait de le créer dans le rôle traefik permet de s'assurer qu'il est créé avant le déploiement des services qui en ont besoin (rpn, jenkins, etc.)
+- name: Créer le réseau overlay partagé traefik-public
+  community.docker.docker_network:
+    name: traefik-public
+    driver: overlay
+    attachable: true
+  run_once: true          # ressource de cluster : une seule fois
+    
+- name: Créer le secret desec_token
+  community.docker.docker_secret:
+    name: desec_token
+    data: "{{ vault_desec_token }}"
+    state: present
+  no_log: true
+
+- name: Créer le répertoire de configuration Traefik
+  ansible.builtin.file:
+    path: /opt/traefik/config/
+    state: directory
+    mode: '0755'
+
+- name: Créer le répertoire de configuration dynamic de Traefik
+  ansible.builtin.file:
+    path: /opt/traefik/config/conf.d
+    state: directory
+    mode: '0755'
+
+- name: Copier le fichier de configuration statique Traefik
+  ansible.builtin.copy:
+    src: traefik/config/traefik.yaml
+    dest: /opt/traefik/config/traefik.yaml
+
+- name: Copier le fichier de configuration dynamique Traefik pour le dashboard
+  ansible.builtin.copy:
+    src: traefik/config/conf.d/dashboard.yml
+    dest: /opt/traefik/config/conf.d/dashboard.yml
+
+- name: Copier le fichier de configuration dynamique Traefik pour Jenkins
+  ansible.builtin.copy:
+    src: traefik/config/conf.d/jenkins.yml
+    dest: /opt/traefik/config/conf.d/jenkins.yml
+
+- name: Copier le docker-compose.yml pour traefik
+  ansible.builtin.copy:
+    src: traefik/docker-compose.yml
+    dest: /opt/traefik/docker-compose.yml
+
+- name: Déployer la stack Traefik sur le swarm
+  community.docker.docker_compose_v2:
+    project_src: /opt/traefik
+    state: present
+  become: true
+  changed_when: true

@@ -1,0 +1,33 @@
+http:
+  routers:
+    dashboard:
+      rule: "Host(`traefik.kayedev.dedyn.io`) && (PathPrefix(`/dashboard`) || PathPrefix(`/api`))"
+      service: api@internal
+      entryPoints:
+        - websecure
+      middlewares:
+        - dashboard-auth
+      tls:
+        certResolver: letsencrypt
+
+    netflix:
+      rule: "Host(`netflix.kayedev.dedyn.io`)"
+      service: netflix
+      entryPoints:
+        - websecure
+      middlewares:
+        - netflix-auth
+      tls:
+        certResolver: letsencrypt
+  services:
+    netflix:
+      loadBalancer:
+        servers:
+          - url: "http://netflix:8080"  
+
+  middlewares:
+    dashboard-auth:
+      basicAuth:
+        users:
+          # admin:password (généré avec htpasswd -nb admin password)
+          - "admin:$apr1$khzWF3n3$TzBxAp0TIfOjd8A1EASlc1"

@@ -9,7 +9,7 @@ http:
         - dashboard-auth
       tls:
         certResolver: letsencrypt
-
+    
   middlewares:
     dashboard-auth:
       basicAuth:

@@ -1,0 +1,64 @@
+entryPoints:
+  web:
+    address: ":80"
+    http:
+      redirections:
+        entryPoint:
+          to: websecure
+          scheme: https
+  websecure:
+    address: ":443"
+    http:
+      tls:
+        certResolver: letsencrypt
+  metrics:
+    address: ":8082"
+
+# =============================================================================
+# PROVIDERS
+# =============================================================================
+providers:
+  docker:                                   
+    endpoint: "unix:///var/run/docker.sock"
+    exposedByDefault: false
+    network: traefik-public
+  file:
+    directory: /opt/traefik/conf.d
+    watch: true
+
+api:
+  dashboard: true
+
+certificatesResolvers:
+  letsencrypt:
+    acme:
+      email: hkayengassi@gmail.com
+      storage: /opt/traefik/acme.json
+      # Décommente pour tester sans cramer le rate limit LE : 
+      caServer: https://acme-staging-v02.api.letsencrypt.org/directory
+      dnsChallenge:
+        provider: desec
+        resolvers:
+          - "ns1.desec.io:53"
+          - "ns2.desec.org:53"
+
+log:
+  level: DEBUG      
+  format: json
+
+accessLog:
+  format: json
+  filters:
+    statusCodes:
+      - "400-599"
+  fields:
+    headers:
+      names:
+        User-Agent: keep
+        Authorization: drop
+
+metrics:
+  prometheus:
+    entryPoint: metrics
+    addServicesLabels: true
+    addRoutersLabels: true

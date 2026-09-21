@@ -76,7 +76,7 @@ services:
         delay: 10s
       labels:
         traefik.enable: "true"
-        traefik.http.routers.rpn_app.rule: "Host(`rpn.coeurdafrikgrill.com`)"
+        traefik.http.routers.rpn_app.rule: "Host(`rpn.kayedev.dedyn.io`)"
         traefik.http.routers.rpn_app.entrypoints: "websecure"
         traefik.http.routers.rpn_app.tls.certresolver: "letsencrypt"
         traefik.http.services.rpn_app.loadbalancer.server.port: "3000"

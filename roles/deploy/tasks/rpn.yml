@@ -1,13 +1,4 @@
 ---
-# en tête de rpn.yml
-- name: S'assurer que traefik-public existe
-  community.docker.docker_network:
-    name: traefik-public
-    driver: overlay
-    attachable: true
-    scope: swarm
-  run_once: true
-  
 - name: Login à ECR
   ansible.builtin.shell: >
     aws ecr get-login-password --region {{ vault_aws_region }}
