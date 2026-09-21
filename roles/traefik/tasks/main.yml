@@ -11,20 +11,17 @@
     state: touch
     mode: '0600'
 
-# Créer le réseau overlay partagé traefik-public pour que les services puissent être joignables par le reverse-proxy traefik
-# Le fait de le créer dans le rôle traefik permet de s'assurer qu'il est créé avant le déploiement des services qui en ont besoin (rpn, jenkins, etc.)
-- name: Créer le réseau overlay partagé traefik-public
+- name: Créer le réseau partagé traefik-public
   community.docker.docker_network:
     name: traefik-public
-    driver: overlay
+    driver: bridge
     attachable: true
-  run_once: true          # ressource de cluster : une seule fois
     
-- name: Créer le secret desec_token
-  community.docker.docker_secret:
-    name: desec_token
-    data: "{{ vault_desec_token }}"
-    state: present
+- name: Créer le fichier .env avec le token deSEC
+  ansible.builtin.copy:
+    dest: /opt/traefik/.env
+    content: "DESEC_TOKEN={{ vault_desec_token }}\n"
+    mode: '0600'
   no_log: true
 
 - name: Créer le répertoire de configuration Traefik
@@ -41,27 +38,24 @@
 
 - name: Copier le fichier de configuration statique Traefik
   ansible.builtin.copy:
-    src: traefik/config/traefik.yaml
+    src: config/traefik.yaml
     dest: /opt/traefik/config/traefik.yaml
 
 - name: Copier le fichier de configuration dynamique Traefik pour le dashboard
   ansible.builtin.copy:
-    src: traefik/config/conf.d/dashboard.yml
-    dest: /opt/traefik/config/conf.d/dashboard.yml
-
-- name: Copier le fichier de configuration dynamique Traefik pour Jenkins
-  ansible.builtin.copy:
-    src: traefik/config/conf.d/jenkins.yml
-    dest: /opt/traefik/config/conf.d/jenkins.yml
+    src: config/conf.d/config.yml
+    dest: /opt/traefik/config/conf.d/config.yml
 
 - name: Copier le docker-compose.yml pour traefik
   ansible.builtin.copy:
-    src: traefik/docker-compose.yml
+    src: docker-compose.yml
     dest: /opt/traefik/docker-compose.yml
 
-- name: Déployer la stack Traefik sur le swarm
+- name: Déployer Traefik
   community.docker.docker_compose_v2:
     project_src: /opt/traefik
+    files:
+      - docker-compose.yml
     state: present
   become: true
   changed_when: true

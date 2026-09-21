@@ -16,3 +16,9 @@ all:
       ansible_host: 192.168.177.146
       ansible_user: jenkins
       ansible_ssh_private_key_file: /home/ansible/.ssh/id_rsa
+   vm:
+    hosts:
+     vm1:
+      ansible_host: 192.168.177.170
+      ansible_user: jenkins
+      ansible_ssh_private_key_file: /home/ansible/.ssh/id_rsa

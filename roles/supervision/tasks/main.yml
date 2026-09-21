@@ -1,0 +1,10 @@
+---
+- name: Créer Prometheus platform
+  ansible.builtin.import_tasks: prometheus.yml
+  tags:
+    - prometheus
+
+- name: Créer Grafana platform
+  ansible.builtin.import_tasks: grafana.yml
+  tags:
+    - grafana

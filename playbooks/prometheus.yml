@@ -1,0 +1,7 @@
+---
+- name: Créer prometheus platform
+  become: true
+  hosts: vm
+  roles:
+    - supervision
+    

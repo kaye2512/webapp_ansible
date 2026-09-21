@@ -1,0 +1,30 @@
+---
+- name: Créer le repertoire de déploiment de prometheus
+  ansible.builtin.file:
+    path: /opt/prometheus
+    state: directory
+    mode: '0755'
+
+- name: Copier le fichier de configuration prometheus.yml
+  ansible.builtin.copy:
+    src: prometheus/prometheus.yml
+    dest: /opt/prometheus/prometheus.yml
+
+- name: Copier le fichier d'alert de prometheus pour tester les alerts
+  ansible.builtin.copy:
+    src: prometheus/alerts.yml
+    dest: /opt/prometheus/alerts.yml
+
+- name: Copier le Compose de prometheus 
+  ansible.builtin.copy:
+    src: prometheus/compose.yml
+    dest: /opt/prometheus/compose.yml
+
+- name: Lancer le docker compose 
+  community.docker.docker_compose_v2:
+    project_src: /opt/prometheus
+    files:
+      - compose.yml
+    state: present
+  become: true
+  changed_when: true

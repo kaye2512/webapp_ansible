@@ -1,0 +1,20 @@
+---
+- name: Créer le repertoire de déploiment de grafana
+  ansible.builtin.file:
+    path: /opt/grafana
+    state: directory
+    mode: '0755'
+
+- name: Copier le docker compose de grafana
+  ansible.builtin.copy:
+    src: grafana/compose.yml
+    dest: /opt/grafana/compose.yml
+
+- name: Lancer le docker compose 
+  community.docker.docker_compose_v2:
+    project_src: /opt/grafana
+    files:
+      - compose.yml
+    state: present
+  become: true
+  changed_when: true

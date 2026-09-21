@@ -1,6 +1,6 @@
 ---
 - name: Deploy traefik
   become: true
-  hosts: all
+  hosts: vm
   roles:
     - traefik
