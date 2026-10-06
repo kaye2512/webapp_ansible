@@ -5,19 +5,6 @@
       - python3-docker
     state: present
     update_cache: true
-
-- name: Créer le réseau overlay partagé "edge"
-  community.docker.docker_network:
-    name: edge
-    driver: overlay
-    attachable: true
-    scope: swarm
-  become: true
-  tags: [always]
- 
-- name: Déployer le reverse-proxy edge (port 80, routage par domaine)
-  ansible.builtin.import_tasks: edge.yml
-  tags: [edge]
     
 - name: deploy netflix stack
   ansible.builtin.import_tasks: netflix.yml

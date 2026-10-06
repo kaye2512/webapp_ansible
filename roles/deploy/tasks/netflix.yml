@@ -22,15 +22,6 @@
     - { name: mailtrap_token, value: "{{ vault_mailtrap_token }}" }
   no_log: true
 
-#- name: Créer les secrets TLS
-#  community.docker.docker_secret:
-#    name: "{{ item.name }}"
-#    data: "{{ lookup('file', item.file) }}"
-#    state: present
-#  loop:
-#    - { name: tls_cert, file: "roles/deploy/files/certs/cert.pem" }
-#    - { name: tls_key,  file: "roles/deploy/files/certs/key.pem" }
-
 - name: Créer le config nginx
   community.docker.docker_config:
     name: nginx_conf_v2

@@ -19,7 +19,7 @@
     driver: overlay
     attachable: true
     scope: swarm
-  run_once: true          # ressource de cluster : une seule fois
+  run_once: true        
     
 - name: Créer le secret desec_token
   community.docker.docker_secret:

@@ -1,6 +1,6 @@
 ---
 - name: Configuration de Tailscale sur tous les nœuds
-  hosts: all
+  hosts: jenkins_vm
   become: true
   vars:
     tailscale_enabled: true
