@@ -52,6 +52,10 @@
   become: true
   changed_when: true
 
+- name: S'assurer que db tourne
+  command: docker service update --force rpn_db
+  when: "'1/1' not in lookup('pipe', 'docker service ls --filter name=rpn_db --format {{.Replicas}}')"
+
 - name: Attendre que db réponde VIA L'OVERLAY (même chemin que le migrateur)
   ansible.builtin.command:
     argv:
